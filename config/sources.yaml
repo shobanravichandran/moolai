@@ -1,0 +1,36 @@
+# The "company": which public GitHub data becomes the graph. One graph per company.
+# Read-only: Moolai never writes to these repositories.
+company: kubernetes
+graph: brain_kubernetes
+since: 2026-04-01            # initial backfill window for PRs (epoch cut-off for "recent")
+
+sources:
+  - kind: keps               # every KEP: shallow git clone, parse kep.yaml + README sections locally
+    repo: kubernetes/enhancements
+    path: keps/
+  - kind: kep_tracking_issues  # issue number == KEP number
+    repo: kubernetes/enhancements
+  - kind: kep_prs            # design-review threads: PRs touching keps/
+    repo: kubernetes/enhancements
+  - kind: pull_requests
+    repo: kubernetes/kubernetes
+    labels: [sig/auth, sig/network, sig/node]
+    states: [merged, open]
+  - kind: kep_linked_prs     # implementation PRs linked from tracking issues / KEP READMEs, any age
+    repo: kubernetes/kubernetes
+  - kind: owners             # OWNERS + OWNERS_ALIASES for component paths (should-have)
+    repo: kubernetes/kubernetes
+  - kind: sigs_yaml          # SIG chairs, tech leads, subprojects (should-have)
+    repo: kubernetes/community
+    path: sigs.yaml
+
+# LLM decision extraction (Technology edges) only for these teams, to bound cost.
+extract_teams: [sig-auth, sig-network, sig-node]
+
+# Excluded from rankings; stored with is_bot = true.
+bots:
+  - k8s-ci-robot
+  - k8s-triage-robot
+  - k8s-infra-ci-robot
+  - k8s-release-robot
+  - "*[bot]"

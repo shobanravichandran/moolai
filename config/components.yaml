@@ -1,0 +1,92 @@
+# Path prefix -> Component -> Team for kubernetes/kubernetes. Longest prefix wins.
+# Files under no listed prefix fall back to their first two path segments (e.g. pkg/volume).
+# DRAFT: verify these paths against the repo tree in hour 1.
+repo: kubernetes/kubernetes
+
+skip:  # never become File nodes
+  - vendor/
+  - api/openapi-spec/
+  - api/discovery/
+  - "**/zz_generated*"
+  - "**/*.pb.go"
+
+components:
+  - id: auth
+    name: Authentication and authorization
+    team: sig-auth
+    aliases: [auth, authn, authz, authentication, authorization, rbac, oidc, service account, pod security]
+    paths:
+      - staging/src/k8s.io/apiserver/pkg/authentication/
+      - staging/src/k8s.io/apiserver/pkg/authorization/
+      - staging/src/k8s.io/apiserver/plugin/pkg/authenticator/
+      - staging/src/k8s.io/apiserver/plugin/pkg/authorizer/
+      - staging/src/k8s.io/pod-security-admission/
+      - pkg/kubeapiserver/authenticator/
+      - pkg/kubeapiserver/authorizer/
+      - pkg/serviceaccount/
+      - pkg/controller/serviceaccount/
+      - pkg/registry/rbac/
+      - plugin/pkg/auth/
+      - plugin/pkg/admission/serviceaccount/
+
+  - id: kube-proxy
+    name: kube-proxy
+    team: sig-network
+    aliases: [kube-proxy, proxy, iptables, ipvs, nftables]
+    paths:
+      - pkg/proxy/
+      - cmd/kube-proxy/
+
+  - id: endpoints
+    name: Endpoints and EndpointSlices
+    team: sig-network
+    aliases: [endpoints, endpointslice, endpoint slices]
+    paths:
+      - pkg/controller/endpoint/
+      - pkg/controller/endpointslice/
+      - pkg/controller/endpointslicemirroring/
+      - staging/src/k8s.io/endpointslice/
+
+  - id: kubelet
+    name: Kubelet
+    team: sig-node
+    aliases: [kubelet, cri, cgroups, cgroup, container runtime, pod lifecycle]
+    paths:
+      - pkg/kubelet/
+      - cmd/kubelet/
+
+  - id: dra
+    name: Dynamic Resource Allocation
+    team: sig-node
+    aliases: [dra, dynamic resource allocation, devices, resourceclaim]
+    paths:
+      - pkg/kubelet/cm/dra/
+      - staging/src/k8s.io/dynamic-resource-allocation/
+      - pkg/scheduler/framework/plugins/dynamicresources/
+
+  - id: scheduler
+    name: Scheduler
+    team: sig-scheduling
+    aliases: [scheduler, kube-scheduler, scheduling]
+    paths:
+      - pkg/scheduler/
+      - cmd/kube-scheduler/
+      - staging/src/k8s.io/kube-scheduler/
+
+  - id: apiserver
+    name: API server
+    team: sig-api-machinery
+    aliases: [apiserver, kube-apiserver, api machinery]
+    paths:
+      - staging/src/k8s.io/apiserver/
+      - cmd/kube-apiserver/
+      - pkg/controlplane/
+
+  - id: kubectl
+    name: kubectl
+    team: sig-cli
+    aliases: [kubectl, cli]
+    paths:
+      - staging/src/k8s.io/kubectl/
+      - staging/src/k8s.io/cli-runtime/
+      - cmd/kubectl/
