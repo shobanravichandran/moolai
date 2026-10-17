@@ -5,6 +5,9 @@ each decision was made, and who should review a change. Every answer comes with 
 
 *Moolai* (மூளை) means "brain" in Tamil.
 
+**Live demo: https://moolai-tau.vercel.app** (API: https://moolai-api.vercel.app/api/health). Read-only, with a
+shared $3/day cap on Claude answers; past the cap it answers in graph-only mode.
+
 Built for [Graph Hacks: Context for AI Agents](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs ×
 FalkorDB, Oct 15–18 2026). **Track: 03, Company Brain.**
 

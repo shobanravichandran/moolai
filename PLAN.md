@@ -12,7 +12,10 @@
 > **Agent built** (`POST /api/ask`): a graph-only keyword router (English + Tanglish) answers today. The Claude agent
 > (`moolai/agent.py`, 6 tools over the same queries, grounding check) **runs live**: Tanglish questions get grounded
 > Tanglish answers for about $0.04 each. **KEP X→Y extraction done**: 237 KEPs (228 via Batches, 6 refusals retried
-> directly with the fallback) → 82 MOVES_FROM / MOVES_TO links across 127 technologies, $2.19 in total. **UI done** (`web/`): Ask, Reviewers, Onboarding, an evidence graph, the Cypher
+> directly with the fallback) → 82 MOVES_FROM / MOVES_TO links across 127 technologies, $2.19 in total.
+> **Deployed on Vercel** (Oct 17): UI https://moolai-tau.vercel.app, API https://moolai-api.vercel.app. The graph
+> (without the comment nodes, 18k nodes, 36 MB) is in the team's FalkorDB Cloud instance next to ninaivu's graphs.
+> MOOLAI_READ_ONLY=1, MOOLAI_DAILY_BUDGET_USD=3. **UI done** (`web/`): Ask, Reviewers, Onboarding, an evidence graph, the Cypher
 > inspector and Sync now, checked in the browser in light, dark and phone layouts. Next: a live Claude run.
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
