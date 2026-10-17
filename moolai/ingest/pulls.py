@@ -270,12 +270,18 @@ def backfill(gh: GitHub, cfg: dict, links: dict[int, list[int]] | None, limit: i
     )
     totals: dict = {}
     batch = mapping.Rows()
-    for _, node in fetch_by_number(gh, KK, "pullRequest", todo, batch=10):
+    found = set()
+    for n, node in fetch_by_number(gh, KK, "pullRequest", todo, batch=10):
+        found.add(n)
         mapping.add_pr(batch, node, KK, components=load_components(), bots=cfg["bots"], keps=keps)
         if len(batch.prs) >= 200:
             _add(totals, load_rows(batch))
             batch = mapping.Rows()
     _add(totals, load_rows(batch))
+    # Links like kubernetes/kubernetes#N can point at issues; GitHub then returns no PR. Drop those stubs.
+    missing = [f"{KK}#{n}" for n in todo if n not in found]
+    run("delete_pr_stubs", {"ids": missing})
+    totals["not_prs_removed"] = len(missing)
     return totals
 
 

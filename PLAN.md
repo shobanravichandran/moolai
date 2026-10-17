@@ -2,8 +2,11 @@
 
 > **Status:** plan approved. Done: scaffold (FalkorDB in Docker, schema, `/api/health`) and **KEP ingestion**
 > (`python -m moolai.ingest.keps`: 645 decisions, 32 teams, ~700 people, tracking-issue stubs, REPLACES / SEE_ALSO,
-> incremental via git sha in `SyncState`). **GitHub ingester written and tested offline**
-> (`python -m moolai.ingest.pulls`), not yet run live: it needs `GITHUB_TOKEN` in `.env`.
+> incremental via git sha in `SyncState`) and **GitHub ingestion, run live Oct 17**
+> (`python -m moolai.ingest.pulls`, ~15 min first run, ~15 s incremental):
+> 638 tracking issues · 1,371 k/k PRs (sig/auth, network, node since Apr 1) · 1,282 backfilled implementation PRs ·
+> 5,953 reviews (Prow + GitHub) · 3,346 IMPLEMENTS · 709 FIXES · 9.5k files in 133 components · 61k comments ·
+> 2,150 people. Next: core queries (`who_knows`, `suggest_reviewers` + backtest).
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain
@@ -409,6 +412,9 @@ incremental sync.
 | Risk | Mitigation |
 |---|---|
 | A PR touches >100 files | GraphQL returns the first 100 per PR; `files_total` records the real count |
+| Old PRs (2016) have an `lgtm` label but no `/lgtm` comment, so no reviewer | Known gap (17 merged PRs); far outside any scoring window |
+| `kubernetes/kubernetes#N` links in tracking issues can be issues | Backfill deletes stubs GitHub says aren't PRs |
+| PRs that touch many components (dependency bumps, lint sweeps) inflate expertise | Down-weight by number of components touched in the scoring (§6) |
 | GitHub API timeouts or limits | Small pages, retries, raw cache on disk; ingest the 3 SIGs first, widen later |
 | Most k8s reviews are Prow `/lgtm`, not GitHub reviews | Parse comments (§5) |
 | Huge vendor/codegen PRs skew the graph | path filters + file cap |
