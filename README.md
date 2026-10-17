@@ -33,6 +33,7 @@ docker compose up -d falkordb        # FalkorDB on :6380, Browser on http://loca
 uv sync
 uv run python -m moolai.schema       # create indexes (safe to re-run)
 uv run python -m moolai.ingest.keps  # clone kubernetes/enhancements, load every KEP (~6 s; re-runs load only changes)
+uv run python -m moolai.ingest.pulls # tracking issues + k/k PRs + implementation PRs (needs GITHUB_TOKEN)
 uv run uvicorn moolai.api:app --reload --port 8020
 ```
 

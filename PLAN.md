@@ -2,7 +2,8 @@
 
 > **Status:** plan approved. Done: scaffold (FalkorDB in Docker, schema, `/api/health`) and **KEP ingestion**
 > (`python -m moolai.ingest.keps`: 645 decisions, 32 teams, ~700 people, tracking-issue stubs, REPLACES / SEE_ALSO,
-> incremental via git sha in `SyncState`). Next: the GitHub GraphQL ingester (§5).
+> incremental via git sha in `SyncState`). **GitHub ingester written and tested offline**
+> (`python -m moolai.ingest.pulls`), not yet run live: it needs `GITHUB_TOKEN` in `.env`.
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain
@@ -144,7 +145,7 @@ Timestamps are epoch seconds (ints), so windows, decay and "as of" time travel s
 ```
 (Person)-[:AUTHORED]->(PR|Issue|Commit|Decision|Comment)
 (Person)-[:REVIEWED {state, at, via:'github'|'prow'}]->(PR)
-(PR)-[:FIXES]->(Issue)                       closingIssuesReferences + "Fixes #N"
+(PR)-[:FIXES]->(Issue)                       closingIssuesReferences only (a "#N" regex can't tell issues from PRs)
 (PR)-[:TOUCHES {additions, deletions}]->(File)-[:PART_OF]->(Component)-[:OWNED_BY]->(Team)
 (Decision)-[:DISCUSSED_IN]->(Issue|PR)       tracking issue (same number) + KEP PRs in enhancements
 (PR)-[:IMPLEMENTS]->(Decision)               "KEP-NNNN" / enhancements#NNNN in the PR body, links in tracking-issue comments
@@ -156,7 +157,8 @@ Timestamps are epoch seconds (ints), so windows, decay and "as of" time travel s
 (PR|Issue)-[:TAGGED]->(Team)                 sig/* labels
 (Person)-[:OWNS {role:'approver'|'reviewer'}]->(Component)          OWNERS files (should-have)
 (Person)-[:LEADS {role:'chair'|'tech_lead'}]->(Team)                sigs.yaml (should-have)
-(Comment)-[:ON]->(PR|Issue)   (PR)-[:HAS_COMMIT]->(Commit)   (PR|Issue)-[:IN_REPO]->(Repo)
+(Comment)-[:ON]->(PR|Issue)                  human comments only, trimmed
+(PR)-[:HAS_COMMIT]->(Commit), (PR|Issue)-[:IN_REPO]->(Repo)          not built yet (repo is a property)
 ```
 
 ### Indexes (`queries/00_schema.cypher`, already in the scaffold)
@@ -185,10 +187,17 @@ Ingestion rules:
   re-fetch. The same cache ships as a release asset, and `--offline` rebuilds the graph without a token.
 - **Idempotent upserts.** `UNWIND $rows AS r MERGE (n:Label {key: r.key}) SET n += r.props`. On re-sync, a PR's
   `TOUCHES` / `REVIEWED` / `FIXES` edges are replaced, so edits show up.
-- **Prow reviews.** Comments that start with `/lgtm` or `/approve` (from a non-bot, non-author) become
-  `REVIEWED {via:'prow'}`.
-- **Noise filters:** bots (`k8s-ci-robot`, `k8s-triage-robot`, `*[bot]`) get `is_bot = true` and are excluded from
-  rankings. Skip `vendor/`, `zz_generated*`, `*.pb.go` and `api/openapi-spec/`. Cap files per PR at 300.
+- **Prow reviews.** Comment lines that start with `/lgtm` or `/approve` (not `... cancel`), from a non-bot who
+  isn't the PR author, count as reviews. They're merged with GitHub reviews into **one** `REVIEWED {state, at, via}`
+  edge per person and PR, keeping the strongest state (`APPROVED > LGTM > CHANGES_REQUESTED > COMMENTED`).
+  `via` is `github`, `prow` or `both`.
+- **Implementation links.** `(PR)-[:IMPLEMENTS {via}]->(Decision)` comes from KEP references in the PR title/body
+  (`via:'pr_body'`) and from k/k PR links in human comments on the KEP's tracking issue (`via:'tracking_issue'`).
+  Linked PRs that aren't fetched yet are stubs (`fetched = false`) until the backfill step.
+- **Offline rebuild.** `python -m moolai.ingest.pulls --offline` replays every cached response (newest version of
+  each item wins), so a graph can be rebuilt from `data/raw/github` without a token.
+- **Noise filters:** bots (GitHub `Bot` actors, `k8s-ci-robot`, `k8s-triage-robot`, `*[bot]` matched literally)
+  get `is_bot = true` and are excluded from rankings; their comments aren't stored. Skip `vendor/`, `zz_generated*`, `*.pb.go` and `api/openapi-spec/`. Cap files per PR at 300.
 - **Rate limits:** read `rateLimit { cost remaining resetAt }` on every query. Use 25–50 PRs per page, and retry
   with a smaller page on 502s.
 - **Never write to Kubernetes repos.** Moolai is read-only against upstream.
@@ -399,6 +408,7 @@ incremental sync.
 
 | Risk | Mitigation |
 |---|---|
+| A PR touches >100 files | GraphQL returns the first 100 per PR; `files_total` records the real count |
 | GitHub API timeouts or limits | Small pages, retries, raw cache on disk; ingest the 3 SIGs first, widen later |
 | Most k8s reviews are Prow `/lgtm`, not GitHub reviews | Parse comments (§5) |
 | Huge vendor/codegen PRs skew the graph | path filters + file cap |
