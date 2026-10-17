@@ -6,7 +6,10 @@
 > (`python -m moolai.ingest.pulls`, ~15 min first run, ~15 s incremental):
 > 638 tracking issues · 1,371 k/k PRs (sig/auth, network, node since Apr 1) · 1,282 backfilled implementation PRs ·
 > 5,953 reviews (Prow + GitHub) · 3,346 IMPLEMENTS · 709 FIXES · 9.5k files in 133 components · 61k comments ·
-> 2,150 people. Next: core queries (`who_knows`, `suggest_reviewers` + backtest).
+> 2,150 people. **Core queries done** (`moolai/brain.py`, `/api/experts|reviewers|onboarding|decisions`):
+> reviewer suggestions hit a real reviewer in the top 3 for **79.1%** of 700 merged PRs (54.4% at #1), vs 63.7% /
+> 30.3% for "the SIG's busiest reviewers" and 9.3% for a random past reviewer ([docs/backtest.md](docs/backtest.md)).
+> Next: the agent (`/api/ask`, graph-only router, KEP extraction).
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain
@@ -274,17 +277,24 @@ cartesian blow-up.
 > in two of them), only the first one returns rows. Give each comprehension its own variable names. A test in
 > `tests/test_keps.py` guards this.
 
-### Scoring (who knows / who reviews)
-`score(person) = Σ over prior PRs q: w(role) · 2^(−age_days/90) · w(match)`, where:
-- `w(role)`: review = 1.0, authored = 0.7, KEP author/approver = 1.0
-- `w(match)`: same file = 1.0, same directory = 0.5, same component = 0.25
-- plus a bonus for an OWNERS approver of that directory
-- excluding the PR author and bots
+### Scoring (who knows / who reviews), as built
 
-**Backtest (the number for the demo):** take the last 200 merged PRs in scope and, for each one, suggest reviewers
-using only data before its `created_at`. Ground truth is the humans who actually reviewed it. Report
-hit@1 / hit@3 / MRR against two baselines: "top reviewers of the SIG" and "a random OWNERS reviewer" (roughly what
-Prow's blunderbuss does).
+Both live in `queries/` with the formula in the file header.
+
+- **Per earlier merged PR q:** `role · 2^(−age_days/90) / √(components q spans)`. Role is approve/lgtm 1.0,
+  authored 0.7, other review 0.6. Dividing by the component span keeps dependency bumps and lint sweeps from
+  counting as expertise.
+- **`who_knows`:** sum over PRs touching the component in the last 365 days, plus `2·ln(1 + KEPs)` the person
+  authored or approved, counting only KEPs owned by the component's team and implemented in it.
+- **`suggest_reviewers`:** the same per-PR term times a match factor: same file 1.0, same directory 0.5, same
+  component 0.25. Each component's scores become **shares**, weighted by the fraction of the PR's files in that
+  component, so a busy component like kubelet can't drown out the one the PR is about. Only PRs merged before
+  `$as_of` count (the PR's creation time). The author and bots are excluded. If file history runs out, the list is
+  topped up with the SIG's busiest reviewers.
+- **Backtest** (`python -m scripts.backtest_reviewers`, results in [docs/backtest.md](docs/backtest.md)): 700
+  merged PRs; per-component normalization beat raw sums (53.6% vs 50.1% hit@1).
+- **Repo-wide files** (`go.mod`, `go.sum`, `LICENSES/`) are skip rules: every dependency bump touches them.
+  `python -m moolai.ingest.pulls --only prune` re-applies the skip rules to the existing graph.
 
 ---
 

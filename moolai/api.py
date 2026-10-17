@@ -1,13 +1,16 @@
 """Moolai API (FastAPI). Locally: uvicorn moolai.api:app --reload --port 8020."""
 
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from . import brain
 from .config import settings
-from .db import get_db, run
+from .db import get_db, query_log, run
 from .queries import query_source
 from .schema import ensure_schema
 
@@ -24,6 +27,22 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Moolai API", lifespan=lifespan)
+
+
+@app.exception_handler(brain.NotFound)
+async def not_found(_: Request, exc: brain.NotFound) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+def _with_queries(fn: Callable[..., dict], *args: Any, **kwargs: Any) -> dict:
+    """Run fn and attach the named Cypher queries it executed, with timings (the UI's Query Inspector)."""
+    token = query_log.set([])
+    try:
+        result = fn(*args, **kwargs)
+        result["queries"] = query_log.get()
+        return result
+    finally:
+        query_log.reset(token)
 
 
 @app.get("/api/health")
@@ -43,3 +62,30 @@ def cypher(name: str):
         return {"name": name, "cypher": query_source(name)}
     except KeyError:
         return JSONResponse(status_code=404, content={"detail": f"Unknown query: {name}"})
+
+
+@app.get("/api/resolve")
+def resolve(q: str) -> dict:
+    return {"query": q, "matches": brain.resolve_topic(q)}
+
+
+@app.get("/api/experts")
+def experts(
+    topic: str | None = None, component: str | None = None, team: str | None = None, k: int = 8
+) -> dict:
+    return _with_queries(brain.experts, topic=topic, component=component, team=team, k=k)
+
+
+@app.get("/api/reviewers")
+def reviewers(pr: str, k: int = 3) -> dict:
+    return _with_queries(brain.reviewers, pr, k=k)
+
+
+@app.get("/api/onboarding")
+def onboarding(component: str) -> dict:
+    return _with_queries(brain.onboarding, component)
+
+
+@app.get("/api/decisions/{decision_id}/trace")
+def decision_trace(decision_id: str) -> dict:
+    return _with_queries(brain.decision, decision_id)

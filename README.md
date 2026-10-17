@@ -8,8 +8,8 @@ each decision was made, and who should review a change. Every answer comes with 
 Built for [Graph Hacks: Context for AI Agents](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs ×
 FalkorDB, Oct 15–18 2026). **Track: 03, Company Brain.**
 
-> Status: in progress. KEP ingestion works (645 decisions, their SIGs and people). The build plan is in
-> [PLAN.md](PLAN.md).
+> Status: in progress. Ingestion (KEPs + GitHub) and the graph-only answers (experts, reviewers, onboarding,
+> decision traces) work. The build plan is in [PLAN.md](PLAN.md).
 
 ## What it answers
 
@@ -36,6 +36,17 @@ uv run python -m moolai.ingest.keps  # clone kubernetes/enhancements, load every
 uv run python -m moolai.ingest.pulls # tracking issues + k/k PRs + implementation PRs (needs GITHUB_TOKEN)
 uv run uvicorn moolai.api:app --reload --port 8020
 ```
+
+Try it (each response lists the named Cypher queries it ran, with timings):
+
+```bash
+curl "localhost:8020/api/experts?topic=auth%20module"
+curl "localhost:8020/api/reviewers?pr=https://github.com/kubernetes/kubernetes/pull/143065"
+curl "localhost:8020/api/onboarding?component=kube-proxy"
+curl "localhost:8020/api/decisions/KEP-3866/trace"
+```
+
+Reviewer suggestions are backtested on 700 real merged PRs: [docs/backtest.md](docs/backtest.md).
 
 Or run the whole stack in Docker: `docker compose --profile app up -d --build`, which serves the API on
 http://localhost:8020/api/health.

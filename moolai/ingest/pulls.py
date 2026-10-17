@@ -1,6 +1,7 @@
 """GitHub -> graph: KEP tracking issues, kubernetes/kubernetes PRs, and KEP-linked implementation PRs.
 
-Usage: python -m moolai.ingest.pulls [--only tracking|prs|backfill] [--full] [--offline] [--max-backfill N]
+Usage: python -m moolai.ingest.pulls [--only tracking|prs|backfill|prune] [--full] [--offline]
+                                    [--max-backfill N]
 
 1. tracking: every KEP's tracking issue in kubernetes/enhancements (issue number == KEP number), with
    comments. k/k PR links in those threads become (PR)-[:IMPLEMENTS {via:'tracking_issue'}]->(Decision).
@@ -285,6 +286,21 @@ def backfill(gh: GitHub, cfg: dict, links: dict[int, list[int]] | None, limit: i
     return totals
 
 
+def prune_skipped() -> dict:
+    """Apply the skip rules in components.yaml to files already in the graph, then refresh n_components.
+
+    Run after changing the skip rules; ingestion applies them to new data on its own.
+    """
+    comps = load_components()
+    ids = [r["id"] for r in run("file_ids", read_only=True)]
+    drop = [i for i in ids if comps.skipped(i.split(":", 1)[1])]
+    for chunk in _chunks(drop, 1000):
+        run("delete_files", {"ids": chunk})
+    run("delete_empty_components")
+    updated = run("set_pr_component_counts")[0]["updated"]
+    return {"files_removed": len(drop), "prs_recounted": updated}
+
+
 def replay_cache(cfg: dict) -> dict:
     """Rebuild from data/raw/github without a token: every cached response, newest version of each item wins.
 
@@ -323,6 +339,8 @@ def sync(
     ensure_components()
     if offline:
         return {"offline_replay": replay_cache(cfg)}
+    if only == "prune":
+        return {"prune": prune_skipped()}
     gh = GitHub()
     out: dict = {}
     links = None
@@ -384,7 +402,7 @@ def _chunks(rows: list, size: int):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--only", choices=["tracking", "prs", "backfill"])
+    p.add_argument("--only", choices=["tracking", "prs", "backfill", "prune"])
     p.add_argument("--full", action="store_true", help="ignore watermarks and re-fetch everything in scope")
     p.add_argument(
         "--offline", action="store_true", help="rebuild from data/raw/github only (no token needed)"

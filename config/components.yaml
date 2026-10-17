@@ -9,6 +9,12 @@ skip:  # never become File nodes
   - api/discovery/
   - "**/zz_generated*"
   - "**/*.pb.go"
+  # Touched by every dependency bump: say nothing about who knows what.
+  - LICENSES/
+  - "**/go.mod"
+  - "**/go.sum"
+  - "**/go.work"
+  - "**/go.work.sum"
 
 components:
   - id: auth

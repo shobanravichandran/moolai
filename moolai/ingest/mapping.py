@@ -143,7 +143,7 @@ def add_pr(
         if team:
             rows.teams.append({"pr": pr_id, "team": team})
 
-    seen_files = set()
+    seen_files, touched = set(), set()
     for f in node["files"]["nodes"]:
         path = f["path"]
         if components.skipped(path) or path in seen_files:
@@ -152,12 +152,14 @@ def add_pr(
             continue
         seen_files.add(path)
         c = components.resolve(path)
+        touched.add(c.id)
         rows.files.append(
             {
                 "pr": pr_id,
                 "file": f"{repo}:{path}",
                 "repo": repo,
                 "path": path,
+                "dir": path.rsplit("/", 1)[0] if "/" in path else "",
                 "component": c.id,
                 "component_name": c.name,
                 "team": c.team,
@@ -165,6 +167,9 @@ def add_pr(
                 "deletions": f.get("deletions"),
             }
         )
+    # How many components a PR spans: dependency bumps and lint sweeps touch dozens and say little about
+    # expertise in any one of them, so scoring divides by sqrt(n_components).
+    rows.prs[-1]["props"]["n_components"] = max(1, len(touched))
 
     # Reviews: GitHub review objects plus Prow /lgtm and /approve comments; one edge per person.
     best: dict[str, dict] = {}
