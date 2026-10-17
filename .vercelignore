@@ -1,5 +1,4 @@
-# The API project deploys from the repo root; the UI is its own Vercel project (root: web/).
-web/
+# Applies to both Vercel projects (API at the repo root, UI at web/), so it must not exclude web/.
 tests/
 docs/
 scripts/
