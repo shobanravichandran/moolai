@@ -209,6 +209,23 @@ def onboarding(component: str, *, as_of: int | None = None, window_days: int = W
     }
 
 
+# ---------- graph view ----------
+
+
+def graph(keys: list[str]) -> dict:
+    """The subgraph behind an answer: nodes for the given ids and logins, and the edges among them."""
+    keys = [k for k in dict.fromkeys(keys) if k][:200]
+    nodes = run("graph_nodes", {"keys": keys}, read_only=True) if keys else []
+    links = run("graph_links", {"nids": [n["nid"] for n in nodes]}, read_only=True) if nodes else []
+    return {
+        "nodes": [
+            {"id": n["nid"], "label": n["label"], "key": n["key"], "name": n["name"], "url": n["url"]}
+            for n in nodes
+        ],
+        "links": [{"source": x["source"], "target": x["target"], "type": x["type"]} for x in links],
+    }
+
+
 # ---------- decisions ----------
 
 

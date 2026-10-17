@@ -12,7 +12,8 @@
 > **Agent built** (`POST /api/ask`): a graph-only keyword router (English + Tanglish) answers today. The Claude agent
 > (`moolai/agent.py`, 6 tools over the same queries, grounding check) and the KEP X→Y extraction
 > (`python -m moolai.extract`, 237 KEPs, Batches API) are tested with a fake client but **not run live yet: no
-> `ANTHROPIC_API_KEY`**. Next: the UI.
+> `ANTHROPIC_API_KEY`**. **UI done** (`web/`): Ask, Reviewers, Onboarding, an evidence graph, the Cypher
+> inspector and Sync now, checked in the browser in light, dark and phone layouts. Next: a live Claude run.
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain

@@ -8,8 +8,8 @@ each decision was made, and who should review a change. Every answer comes with 
 Built for [Graph Hacks: Context for AI Agents](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs ×
 FalkorDB, Oct 15–18 2026). **Track: 03, Company Brain.**
 
-> Status: in progress. Ingestion (KEPs + GitHub) and the graph-only answers (experts, reviewers, onboarding,
-> decision traces) work. The build plan is in [PLAN.md](PLAN.md).
+> Status: in progress. Ingestion, the graph-only answers and the UI work. The Claude agent and the KEP
+> extraction still need a live run with an API key. The build plan is in [PLAN.md](PLAN.md).
 
 ## What it answers
 
@@ -37,7 +37,20 @@ uv run python -m moolai.ingest.pulls # tracking issues + k/k PRs + implementatio
 uv run uvicorn moolai.api:app --reload --port 8020
 ```
 
-Try it (each response lists the named Cypher queries it ran, with timings):
+Then the UI (Node 20+), on http://localhost:5180:
+
+```bash
+cd web && npm install && npm run dev   # proxies /api to the API on :8020
+```
+
+- **Ask:** questions in English or Tanglish, with a Graph-only toggle (no LLM, same facts).
+- **Reviewers:** paste a PR to get the top 3 with reasons and example PRs.
+- **Onboarding:** a brief per component, downloadable as Markdown.
+- **Side panel:** the subgraph behind each answer (click a node to open it on GitHub), every Cypher query that
+  ran (click to read it), and the sources the answer may cite.
+- **Sync now:** an incremental sync from GitHub and the KEP repo.
+
+Or the API directly (each response lists the named Cypher queries it ran, with timings):
 
 ```bash
 curl "localhost:8020/api/experts?topic=auth%20module"
@@ -66,6 +79,7 @@ moolai/          Python package: config, FalkorDB access, schema, API
 queries/         named Cypher queries; the code runs them by name (00_schema.cypher = indexes)
 config/          sources.yaml (which GitHub data), components.yaml (path → component → team)
 tests/           pytest; DB tests skip if FalkorDB is down
+web/             React + Vite + TypeScript UI
 PLAN.md          build plan, data model, timeline
 ```
 

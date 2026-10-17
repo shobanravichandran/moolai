@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from . import agent, brain, llm
+from . import agent, brain, llm, router, syncer
 from .config import settings
 from .db import get_db, query_log, run
 from .queries import query_source
@@ -92,7 +92,35 @@ def reviewers(pr: str, k: int = 3) -> dict:
 
 @app.get("/api/onboarding")
 def onboarding(component: str) -> dict:
-    return _with_queries(brain.onboarding, component)
+    def build() -> dict:
+        facts = brain.onboarding(component)
+        return {**facts, "brief_md": router.render_onboarding(facts)}
+
+    return _with_queries(build)
+
+
+@app.get("/api/components")
+def components() -> list[dict]:
+    return run("components_list", read_only=True)
+
+
+class GraphRequest(BaseModel):
+    keys: list[str]
+
+
+@app.post("/api/graph")
+def graph(req: GraphRequest) -> dict:
+    return brain.graph(req.keys)
+
+
+@app.get("/api/sync/status")
+def sync_status() -> dict:
+    return syncer.status()
+
+
+@app.post("/api/sync")
+def sync_now() -> dict:
+    return {"started": syncer.start(), **syncer.status()}
 
 
 @app.get("/api/decisions/{decision_id}/trace")

@@ -217,12 +217,14 @@ def render_trace(t: dict, *, implemented: int = 6) -> list[str]:
     d = t["decision"]
     lines = [
         f"**[{d['id']}]({d['url']}): {d['title']}**",
+        "",
         f"Status: {d['status']}" + (f", {d['stage']}" if d.get("stage") else "")
         + (f" (latest milestone {d['latest_milestone']})" if d.get("latest_milestone") else "")
         + (f" · owned by {', '.join(t['team'])}" if t["team"] else ""),
         "",
     ]  # fmt: skip
-    brief = re.sub(r"(?<!\n)\n(?!\n)", " ", d.get("brief") or d.get("summary") or "")  # README hard wraps
+    # Undo README hard wraps, but keep list items and headings on their own lines.
+    brief = re.sub(r"(?<!\n)\n(?!\n|\s*[-*+] |\s*\d+\. |#)", " ", d.get("brief") or d.get("summary") or "")
     if brief:
         lines += [brief if len(brief) < 600 else brief[:600].rsplit(" ", 1)[0] + " …", ""]
     if t.get("rationale"):
@@ -263,6 +265,29 @@ def _trace(decision_id: str) -> dict:
         t["decision"]["brief"] = extra[0]["brief"]
         t["rationale"] = extra[0]["rationale"] or []
     return t
+
+
+def render_onboarding(o: dict) -> str:
+    """An onboarding brief (Markdown) from brain.onboarding() facts."""
+    c = o["component"]
+    lines = [f"## Onboarding: {c['name']}" + (f" ({', '.join(o['team'])})" if o["team"] else ""), ""]
+    lines += ["**Who to ask**"] + [
+        f"- {_person(x['login'])}: {'; '.join(x['reasons'])}" for x in o["experts"]
+    ]
+    lines += ["", "**Decisions that shaped it**"] + [
+        f"- [{d['id']}]({d['url']}) {d['title']} ({d['status']}, {d['prs']} PRs)" for d in o["decisions"]
+    ]
+    lines += ["", "**Files that change most**"] + [
+        f"- `{f['path']}` ({f['prs']} PRs)" for f in o["hot_files"][:6]
+    ]
+    lines += ["", "**Recently merged**"] + [
+        f"- {_pr_link(p['id'], p['url'])} {p['title']} by {', '.join(p['author'])}"
+        for p in o["recent_prs"][:5]
+    ]
+    lines += ["", "**In flight**"] + [
+        f"- {_pr_link(p['id'], p['url'])} {p['title']} by {', '.join(p['author'])}" for p in o["open_prs"][:5]
+    ]
+    return "\n".join(lines)
 
 
 def answer(intent: Intent) -> tuple[str, list]:
@@ -318,26 +343,7 @@ def answer(intent: Intent) -> tuple[str, list]:
         return "\n".join(lines), [r]
     if intent.kind == "onboarding":
         o = brain.onboarding(intent.args["component"])
-        c = o["component"]
-        lines = [f"## Onboarding: {c['name']}" + (f" ({', '.join(o['team'])})" if o["team"] else ""), ""]
-        lines += ["**Who to ask**"] + [
-            f"- {_person(x['login'])}: {'; '.join(x['reasons'])}" for x in o["experts"]
-        ]
-        lines += ["", "**Decisions that shaped it**"] + [
-            f"- [{d['id']}]({d['url']}) {d['title']} ({d['status']}, {d['prs']} PRs)" for d in o["decisions"]
-        ]
-        lines += ["", "**Files that change most**"] + [
-            f"- `{f['path']}` ({f['prs']} PRs)" for f in o["hot_files"][:6]
-        ]
-        lines += ["", "**Recently merged**"] + [
-            f"- {_pr_link(p['id'], p['url'])} {p['title']} by {', '.join(p['author'])}"
-            for p in o["recent_prs"][:5]
-        ]
-        lines += ["", "**In flight**"] + [
-            f"- {_pr_link(p['id'], p['url'])} {p['title']} by {', '.join(p['author'])}"
-            for p in o["open_prs"][:5]
-        ]
-        return "\n".join(lines), [o]
+        return render_onboarding(o), [o]
     text = intent.args["text"]
     decisions = run("decision_search", {"q": search_query(text, all_terms=False), "k": 5}, read_only=True)
     topics = brain.resolve_topic(text)
