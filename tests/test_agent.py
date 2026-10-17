@@ -226,8 +226,44 @@ def test_extraction_cache_loads_switch_edges(keps_root: Path, tmp_path: Path, mo
         assert found["basis"] == "extracted MOVES_FROM / MOVES_TO edges"
         # The KEP names the target differently: fall back to "moved away from X", still from extracted edges.
         other = router.find_switch("iptables", "ebpf")
-        assert [d["id"] for d in other["decisions"]] == ["KEP-3866"] and "MOVES_FROM 'iptables'" in other["basis"]
+        assert [d["id"] for d in other["decisions"]] == ["KEP-3866"] and "MOVES_FROM 'iptables'" in other[
+            "basis"
+        ]
         # A changed input (e.g. the KEP was edited) invalidates the cache entry.
         assert extract.cached({**kep, "summary": "edited"}) is None
+    finally:
+        db.graph().delete()
+
+
+# ---------- hosted demo: shared daily budget ----------
+
+
+def test_budget_spent_means_graph_only(monkeypatch):
+    monkeypatch.setattr(llm, "available", lambda: True)
+    monkeypatch.setattr(agent, "budget_left", lambda: 0.0)
+    monkeypatch.setattr(
+        llm, "client", lambda: pytest.fail("Claude must not be called once the budget is spent")
+    )
+    monkeypatch.setattr(
+        router, "ask_graph_only", lambda q: {"mode": "graph-only", "answer_md": "graph answer"}
+    )
+    out = agent.ask("Who knows auth?")
+    assert out["mode"] == "graph-only" and "budget" in out["note"]
+
+
+@pytest.mark.db
+@pytest.mark.skipif(not _falkordb_up(), reason="FalkorDB is not reachable")
+def test_budget_is_shared_through_the_graph(monkeypatch):
+    name = f"test_budget_{uuid.uuid4().hex[:8]}"
+    monkeypatch.setattr(db, "settings", dataclasses.replace(db.settings, graph=name))
+    monkeypatch.setattr(agent, "settings", dataclasses.replace(agent.settings, daily_budget_usd=0.10))
+    try:
+        from moolai.schema import ensure_schema
+
+        ensure_schema()
+        assert agent.budget_left() == pytest.approx(0.10)
+        agent._spend(0.04)
+        agent._spend(0.04)
+        assert agent.budget_left() == pytest.approx(0.02)
     finally:
         db.graph().delete()

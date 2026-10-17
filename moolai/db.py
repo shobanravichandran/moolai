@@ -17,7 +17,11 @@ query_log: ContextVar[list[dict] | None] = ContextVar("query_log", default=None)
 @lru_cache(maxsize=1)
 def get_db() -> FalkorDB:
     return FalkorDB(
-        host=settings.falkordb_host, port=settings.falkordb_port, password=settings.falkordb_password
+        host=settings.falkordb_host,
+        port=settings.falkordb_port,
+        username=settings.falkordb_username,
+        password=settings.falkordb_password,
+        ssl=settings.falkordb_ssl,
     )
 
 

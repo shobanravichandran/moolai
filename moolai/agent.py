@@ -16,6 +16,7 @@ from anthropic import beta_tool
 from anthropic.lib.tools import ToolError
 
 from . import brain, llm, router
+from .config import settings
 from .db import run
 
 log = logging.getLogger("moolai.agent")
@@ -193,9 +194,11 @@ def ask_agent(question: str) -> dict:
         **llm.request_kwargs(EFFORT),
     )
     final = None
+    cost = 0.0
     for message in runner:  # one item per model call, so each call's cost is recorded
-        llm.record_usage("agent", message)
+        cost += llm.record_usage("agent", message)["cost_usd"]
         final = message
+    _spend(cost)
     if final is None or final.stop_reason == "refusal":
         raise RuntimeError("the model declined to answer")
     evidence = router.collect_evidence(state.raw, {})
@@ -210,12 +213,37 @@ def ask_agent(question: str) -> dict:
     }
 
 
+def _today() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def budget_left() -> float | None:
+    """USD left in today's shared Claude budget (None = no cap). Stored in the graph, so every serverless
+    instance sees the same number."""
+    cap = settings.daily_budget_usd
+    if cap is None:
+        return None
+    rows = run("budget_get", {"day": _today()}, read_only=True)
+    return cap - (rows[0]["spent"] if rows else 0.0)
+
+
+def _spend(usd: float) -> None:
+    if settings.daily_budget_usd is not None and usd > 0:
+        run("budget_add", {"day": _today(), "usd": usd})
+
+
 def ask(question: str, *, graph_only: bool = False) -> dict:
-    """Answer with Claude unless graph_only is set or unavailable; fall back to graph-only on model errors."""
+    """Answer with Claude unless graph_only is set, Claude is unavailable, or today's budget is spent.
+
+    Falls back to graph-only on model errors.
+    """
     intent = router.classify(question)
-    if graph_only or not llm.available():
+    left = budget_left() if not graph_only and llm.available() else None
+    if graph_only or not llm.available() or (left is not None and left <= 0):
         out = router.ask_graph_only(question)
-        if not graph_only:
+        if left is not None and left <= 0:
+            out["note"] = "Today's Claude budget for this demo is used up: answered in graph-only mode."
+        elif not graph_only:
             out["note"] = "No Claude key configured: answered in graph-only mode."
         return out
     try:

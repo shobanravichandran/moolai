@@ -6,6 +6,7 @@ import re
 import time
 
 from .components import load_components
+from .config import settings
 from .db import run
 
 WINDOW_DAYS = 365
@@ -118,7 +119,7 @@ def reviewers(pr: str, *, k: int = 3, as_of: int | None = None, window_days: int
     repo, number = parse_pr_ref(pr)
     pr_id = f"{repo}#{number}"
     ctx = run("pr_context", {"pr_id": pr_id}, read_only=True)
-    if (not ctx or not ctx[0]["pr"].get("created_at")) and fetch_missing:
+    if (not ctx or not ctx[0]["pr"].get("created_at")) and fetch_missing and not settings.read_only:
         _fetch_pr(repo, number)
         ctx = run("pr_context", {"pr_id": pr_id}, read_only=True)
     if not ctx or not ctx[0]["pr"].get("created_at"):

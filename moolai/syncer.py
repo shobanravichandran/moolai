@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 
+from .config import settings
 from .db import run
 
 log = logging.getLogger("moolai.syncer")
@@ -13,7 +14,9 @@ _state: dict = {"running": False, "started_at": None, "finished_at": None, "resu
 
 
 def start() -> bool:
-    """Start a sync unless one is running. Returns False if one already was."""
+    """Start a sync unless one is running (or the deployment is read-only). Returns False if not started."""
+    if settings.read_only:
+        return False
     with _lock:
         if _state["running"]:
             return False
@@ -36,4 +39,4 @@ def _run() -> None:
 
 
 def status() -> dict:
-    return {**_state, "sources": run("sync_status", read_only=True)}
+    return {**_state, "read_only": settings.read_only, "sources": run("sync_status", read_only=True)}

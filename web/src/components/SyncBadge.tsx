@@ -64,9 +64,15 @@ export default function SyncBadge({ onSynced }: { onSynced: () => void }) {
           {status?.error && <span className="error"> · last sync failed</span>}
         </span>
       )}
-      <button onClick={syncNow} disabled={status?.running}>
-        Sync now
-      </button>
+      {status?.read_only ? (
+        <span className="muted small" title="The hosted demo is read-only; the data is synced from GitHub by the team">
+          read-only demo
+        </span>
+      ) : (
+        <button onClick={syncNow} disabled={status?.running}>
+          Sync now
+        </button>
+      )}
     </div>
   );
 }

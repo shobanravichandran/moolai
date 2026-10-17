@@ -96,6 +96,7 @@ export interface SyncSource {
 
 export interface SyncStatus {
   running: boolean;
+  read_only?: boolean;
   started_at: number | null;
   finished_at: number | null;
   result: Record<string, unknown> | null;

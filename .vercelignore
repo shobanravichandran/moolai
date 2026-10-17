@@ -1,0 +1,11 @@
+# The API project deploys from the repo root; the UI is its own Vercel project (root: web/).
+web/
+tests/
+docs/
+scripts/
+data/
+.venv/
+.claude/
+**/__pycache__/
+*.md
+!README.md
