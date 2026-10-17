@@ -10,9 +10,9 @@
 > reviewer suggestions hit a real reviewer in the top 3 for **79.1%** of 700 merged PRs (54.4% at #1), vs 63.7% /
 > 30.3% for "the SIG's busiest reviewers" and 9.3% for a random past reviewer ([docs/backtest.md](docs/backtest.md)).
 > **Agent built** (`POST /api/ask`): a graph-only keyword router (English + Tanglish) answers today. The Claude agent
-> (`moolai/agent.py`, 6 tools over the same queries, grounding check) and the KEP X→Y extraction
-> (`python -m moolai.extract`, 237 KEPs, Batches API) are tested with a fake client but **not run live yet: no
-> `ANTHROPIC_API_KEY`**. **UI done** (`web/`): Ask, Reviewers, Onboarding, an evidence graph, the Cypher
+> (`moolai/agent.py`, 6 tools over the same queries, grounding check) **runs live**: Tanglish questions get grounded
+> Tanglish answers for about $0.04 each. **KEP X→Y extraction done**: 237 KEPs (228 via Batches, 6 refusals retried
+> directly with the fallback) → 82 MOVES_FROM / MOVES_TO links across 127 technologies, $2.19 in total. **UI done** (`web/`): Ask, Reviewers, Onboarding, an evidence graph, the Cypher
 > inspector and Sync now, checked in the browser in light, dark and phone layouts. Next: a live Claude run.
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)

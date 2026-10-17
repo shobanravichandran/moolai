@@ -8,8 +8,8 @@ each decision was made, and who should review a change. Every answer comes with 
 Built for [Graph Hacks: Context for AI Agents](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs ×
 FalkorDB, Oct 15–18 2026). **Track: 03, Company Brain.**
 
-> Status: in progress. Ingestion, the graph-only answers and the UI work. The Claude agent and the KEP
-> extraction still need a live run with an API key. The build plan is in [PLAN.md](PLAN.md).
+> Status: in progress. Ingestion, KEP extraction, the Claude agent (live), graph-only mode and the UI work. The
+> build plan is in [PLAN.md](PLAN.md).
 
 ## What it answers
 

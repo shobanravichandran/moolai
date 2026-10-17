@@ -224,6 +224,9 @@ def test_extraction_cache_loads_switch_edges(keps_root: Path, tmp_path: Path, mo
         ]
         found = router.find_switch("iptables", "nftables")
         assert found["basis"] == "extracted MOVES_FROM / MOVES_TO edges"
+        # The KEP names the target differently: fall back to "moved away from X", still from extracted edges.
+        other = router.find_switch("iptables", "ebpf")
+        assert [d["id"] for d in other["decisions"]] == ["KEP-3866"] and "MOVES_FROM 'iptables'" in other["basis"]
         # A changed input (e.g. the KEP was edited) invalidates the cache entry.
         assert extract.cached({**kep, "summary": "edited"}) is None
     finally:

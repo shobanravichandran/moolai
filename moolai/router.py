@@ -203,11 +203,26 @@ def search_query(text: str, *, all_terms: bool) -> str:
     return (" " if all_terms else "|").join(dict.fromkeys(words)) or "kubernetes"
 
 
+def _unique(rows: list[dict]) -> list[dict]:
+    """One row per decision (a KEP that moved to two targets matches twice)."""
+    return list({r["id"]: r for r in reversed(rows)}.values())[::-1]
+
+
 def find_switch(x: str, y: str, k: int = 5) -> dict:
-    """Decisions that moved from x to y: extracted MOVES_* edges first, then full-text on both terms."""
-    rows = run("decision_switch", {"x": x, "y": y, "k": k}, read_only=True)
+    """Decisions that moved from x to y, most specific evidence first:
+    extracted MOVES_FROM x and MOVES_TO y; then extracted MOVES_FROM x alone (the KEP may name the target
+    differently, e.g. "CRI runtimes" for containerd); then full-text on both terms; then on either.
+    """
+    rows = _unique(run("decision_switch", {"x": x, "y": y, "k": k}, read_only=True))
     if rows:
         return {"basis": "extracted MOVES_FROM / MOVES_TO edges", "decisions": rows}
+    rows = _unique(run("decision_switch", {"x": x, "y": "", "k": k}, read_only=True))
+    if rows:
+        targets = ", ".join(sorted({r["moves_to"] for r in rows}))
+        return {
+            "basis": f"extracted MOVES_FROM '{x}' (the KEPs name the target as: {targets})",
+            "decisions": rows,
+        }
     rows = run("decision_search", {"q": search_query(f"{x} {y}", all_terms=True), "k": k}, read_only=True)
     if rows:
         return {"basis": f"full-text match on both '{x}' and '{y}'", "decisions": rows}
