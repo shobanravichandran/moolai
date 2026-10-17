@@ -5,6 +5,7 @@ uses the same brain functions as tools, so turning the LLM off changes the wordi
 Also home to the evidence collector and the grounding check that both modes share.
 """
 
+import json
 import re
 import time
 from dataclasses import dataclass, field
@@ -169,13 +170,14 @@ def _allowed(url: str, evidence: dict[str, dict]) -> bool:
     return url in evidence or alt in evidence
 
 
-def unknown_keps(answer: str, evidence: dict[str, dict]) -> list[str]:
-    """KEP ids the answer mentions that no tool returned (reported, not removed)."""
-    known = {e["id"] for e in evidence.values() if isinstance(e.get("id"), str)}
-    text = " ".join(str(e.get("title") or "") for e in evidence.values())
-    return sorted(
-        {f"KEP-{n}" for n in re.findall(r"KEP-(\d+)", answer)} - known - set(re.findall(r"KEP-\d+", text))
-    )
+def unknown_keps(answer: str, raw) -> list[str]:
+    """KEP ids the answer mentions that appear nowhere in the tool results (reported, not removed).
+
+    Scans the raw results, not just citable evidence: KEP ids also come back as plain strings (e.g. who_knows'
+    `keps` lists).
+    """
+    seen = set(re.findall(r"KEP-\d+", json.dumps(raw, default=str)))
+    return sorted({f"KEP-{n}" for n in re.findall(r"KEP-(\d+)", answer)} - seen)
 
 
 # ---------- graph-only answers ----------

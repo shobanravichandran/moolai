@@ -77,7 +77,8 @@ def test_ground_strips_only_unsupported_links():
     assert "[KEP-3866](https://github.com/kubernetes/enhancements/pull/3866)" in grounded  # /pull == /issues
     assert "Also #999999 and [link removed]." in grounded
     assert "https://k8s.io/dockershim" in grounded
-    assert router.unknown_keps("KEP-3866 replaced KEP-42", EVIDENCE) == ["KEP-42"]
+    raw = [{"id": "KEP-3866", "url": "https://x"}, {"login": "liggitt", "keps": ["KEP-740", "KEP-4633"]}]
+    assert router.unknown_keps("KEP-3866, KEP-740 and KEP-42", raw) == ["KEP-42"]  # plain-string ids count
 
 
 # ---------- agent (fake Claude client) ----------

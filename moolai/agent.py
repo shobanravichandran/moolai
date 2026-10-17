@@ -206,7 +206,7 @@ def ask_agent(question: str) -> dict:
         "tool_calls": state.calls,
         "evidence": list(evidence.values()),
         "ungrounded": removed,
-        "unknown_keps": router.unknown_keps(answer_md, evidence),
+        "unknown_keps": router.unknown_keps(answer_md, state.raw),
     }
 
 
