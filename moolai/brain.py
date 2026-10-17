@@ -142,7 +142,7 @@ def reviewers(pr: str, *, k: int = 3, as_of: int | None = None, window_days: int
                 "last_active": r["last_active"],
                 "evidence": sorted(same or prs, reverse=True)[:5],
                 "reasons": [
-                    f"worked on {len(prs)} earlier PR(s) in {', '.join(r['components'])}",
+                    f"worked on {len(prs)} earlier PR(s) in {', '.join(_area(c) for c in r['components'])}",
                     *([f"{len(same)} of them touched the same files"] if same else []),
                 ],
             }
@@ -167,6 +167,10 @@ def reviewers(pr: str, *, k: int = 3, as_of: int | None = None, window_days: int
             )
     context = {**c, "components": sorted(set(c["components"]))}
     return {"pr": context, "as_of": as_of, "suggestions": suggestions}
+
+
+def _area(component_id: str) -> str:
+    return component_id.removeprefix("dir:")
 
 
 def _fetch_pr(repo: str, number: int) -> None:

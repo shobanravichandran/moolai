@@ -7,8 +7,9 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-from . import brain
+from . import agent, brain, llm
 from .config import settings
 from .db import get_db, query_log, run
 from .queries import query_source
@@ -35,14 +36,22 @@ async def not_found(_: Request, exc: brain.NotFound) -> JSONResponse:
 
 
 def _with_queries(fn: Callable[..., dict], *args: Any, **kwargs: Any) -> dict:
-    """Run fn and attach the named Cypher queries it executed, with timings (the UI's Query Inspector)."""
-    token = query_log.set([])
+    """Run fn; attach the named Cypher queries it ran (the UI's Query Inspector) and any model cost."""
+    q_token = query_log.set([])
+    u_token = llm.usage_log.set([])
     try:
         result = fn(*args, **kwargs)
         result["queries"] = query_log.get()
+        result["usage"] = llm.summarize(llm.usage_log.get())
         return result
     finally:
-        query_log.reset(token)
+        query_log.reset(q_token)
+        llm.usage_log.reset(u_token)
+
+
+class AskRequest(BaseModel):
+    question: str
+    graph_only: bool = False
 
 
 @app.get("/api/health")
@@ -89,3 +98,8 @@ def onboarding(component: str) -> dict:
 @app.get("/api/decisions/{decision_id}/trace")
 def decision_trace(decision_id: str) -> dict:
     return _with_queries(brain.decision, decision_id)
+
+
+@app.post("/api/ask")
+def ask(req: AskRequest) -> dict:
+    return _with_queries(agent.ask, req.question, graph_only=req.graph_only)

@@ -44,7 +44,13 @@ curl "localhost:8020/api/experts?topic=auth%20module"
 curl "localhost:8020/api/reviewers?pr=https://github.com/kubernetes/kubernetes/pull/143065"
 curl "localhost:8020/api/onboarding?component=kube-proxy"
 curl "localhost:8020/api/decisions/KEP-3866/trace"
+curl -X POST localhost:8020/api/ask -H "content-type: application/json"   -d '{"question": "Ean iptables-la irundhu nftables-ku switch pannanga?"}'
 ```
+
+`/api/ask` uses Claude (`claude-opus-5-5`) with tools over the same queries when `ANTHROPIC_API_KEY` is set, and a
+graph-only keyword router otherwise (or with `"graph_only": true`). Every link in an answer must come from a tool
+result; anything else is stripped and reported in `ungrounded`. To add the "what did this KEP move from / to"
+edges, run `uv run python -m moolai.extract` (Batches API, ~237 KEPs, cached in `data/extract/`).
 
 Reviewer suggestions are backtested on 700 real merged PRs: [docs/backtest.md](docs/backtest.md).
 

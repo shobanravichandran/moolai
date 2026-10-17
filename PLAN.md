@@ -9,7 +9,10 @@
 > 2,150 people. **Core queries done** (`moolai/brain.py`, `/api/experts|reviewers|onboarding|decisions`):
 > reviewer suggestions hit a real reviewer in the top 3 for **79.1%** of 700 merged PRs (54.4% at #1), vs 63.7% /
 > 30.3% for "the SIG's busiest reviewers" and 9.3% for a random past reviewer ([docs/backtest.md](docs/backtest.md)).
-> Next: the agent (`/api/ask`, graph-only router, KEP extraction).
+> **Agent built** (`POST /api/ask`): a graph-only keyword router (English + Tanglish) answers today. The Claude agent
+> (`moolai/agent.py`, 6 tools over the same queries, grounding check) and the KEP X→Y extraction
+> (`python -m moolai.extract`, 237 KEPs, Batches API) are tested with a fake client but **not run live yet: no
+> `ANTHROPIC_API_KEY`**. Next: the UI.
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain
