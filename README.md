@@ -8,7 +8,8 @@ each decision was made, and who should review a change. Every answer comes with 
 Built for [Graph Hacks: Context for AI Agents](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs ×
 FalkorDB, Oct 15–18 2026). **Track: 03, Company Brain.**
 
-> Status: scaffold. FalkorDB, the schema and `/api/health` run. The build plan is in [PLAN.md](PLAN.md).
+> Status: in progress. KEP ingestion works (645 decisions, their SIGs and people). The build plan is in
+> [PLAN.md](PLAN.md).
 
 ## What it answers
 
@@ -31,6 +32,7 @@ cp .env.example .env                 # add GITHUB_TOKEN and ANTHROPIC_API_KEY
 docker compose up -d falkordb        # FalkorDB on :6380, Browser on http://localhost:3001
 uv sync
 uv run python -m moolai.schema       # create indexes (safe to re-run)
+uv run python -m moolai.ingest.keps  # clone kubernetes/enhancements, load every KEP (~6 s; re-runs load only changes)
 uv run uvicorn moolai.api:app --reload --port 8020
 ```
 

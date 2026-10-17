@@ -1,7 +1,8 @@
 # Moolai: Execution Plan
 
-> **Status: DRAFT, awaiting team approval.** The scaffold (FalkorDB in Docker, schema, `/api/health`) runs.
-> Everything else in this plan is still to do.
+> **Status:** plan approved. Done: scaffold (FalkorDB in Docker, schema, `/api/health`) and **KEP ingestion**
+> (`python -m moolai.ingest.keps`: 645 decisions, 32 teams, ~700 people, tracking-issue stubs, REPLACES / SEE_ALSO,
+> incremental via git sha in `SyncState`). Next: the GitHub GraphQL ingester (§5).
 >
 > **Hackathon:** Graph Hacks: Context for AI Agents (WeMakeDevs × FalkorDB)
 > **Track:** 03, Company Brain
@@ -148,8 +149,9 @@ Timestamps are epoch seconds (ints), so windows, decay and "as of" time travel s
 (Decision)-[:DISCUSSED_IN]->(Issue|PR)       tracking issue (same number) + KEP PRs in enhancements
 (PR)-[:IMPLEMENTS]->(Decision)               "KEP-NNNN" / enhancements#NNNN in the PR body, links in tracking-issue comments
 (Decision)-[:OWNED_BY]->(Team)  (Decision)-[:INVOLVES]->(Team)      owning-sig / participating-sigs
-(Person)-[:REVIEWER_OF|APPROVER_OF]->(Decision)                     kep.yaml reviewers / approvers
-(Decision)-[:REPLACES]->(Decision)           kep.yaml replaces
+(Person)-[:REVIEWER_OF]->(Decision)  (Person)-[:APPROVER_OF {kind:'sig'|'prr'}]->(Decision)   kep.yaml + prod-readiness/
+(Decision)-[:REPLACES]->(Decision)           kep.yaml replaces / superseded-by; a moved KEP replaces its old dir (KEP-N@old-sig)
+(Decision)-[:SEE_ALSO]->(Decision)           kep.yaml see-also
 (Decision)-[:MOVES_FROM|MOVES_TO]->(Technology)                     LLM-extracted, cached, validated
 (PR|Issue)-[:TAGGED]->(Team)                 sig/* labels
 (Person)-[:OWNS {role:'approver'|'reviewer'}]->(Component)          OWNERS files (should-have)
@@ -218,11 +220,11 @@ The code runs each query by name, and the README links to the same files, so jud
 | Query | Answers |
 |---|---|
 | `00_schema` | indexes ✅ |
-| `upsert_*`, `link_*`, `sync_state_get/set` | ingestion writes |
+| `upsert_*`, `link_*`, `sync_state_get/set` | ingestion writes (KEP ones ✅) |
 | `resolve_topic` | "auth module" → Component / Team / Technology / Decision (full-text + aliases) |
 | `decision_find` | full-text over decisions |
 | `decision_switch` | **"Why X → Y?"**: decisions with `MOVES_FROM` X and `MOVES_TO` Y |
-| `decision_trace` | decision → discussion, implementing PRs, people, replaced decisions, with URLs |
+| `decision_trace` | decision → discussion, implementing PRs, people, replaced decisions, with URLs ✅ |
 | `who_knows` | ranked experts for a component or team, with reasons |
 | `formal_owners` | OWNERS approvers / reviewers and SIG leads for a component |
 | `ownership_drift` | formal owners who've gone quiet, and active experts who aren't owners (should-have) |
@@ -252,18 +254,13 @@ RETURN p.login AS login, score, prs
 ORDER BY score DESC LIMIT $k
 ```
 
-```cypher
-// decision_trace: one decision and everything it connects to, as lists (no cartesian blow-up)
-MATCH (d:Decision {id: $id})
-RETURN d {.id, .title, .status, .stage, .latest_milestone, .summary, .url} AS decision,
-  [(d)-[:DISCUSSED_IN]->(x) | x {.id, .title, .url}] AS discussed_in,
-  [(pr:PR)-[:IMPLEMENTS]->(d) | pr {.id, .title, .url, .merged_at}] AS implemented_by,
-  [(p:Person)-[:AUTHORED]->(d) | p.login] AS authors,
-  [(p:Person)-[:APPROVER_OF]->(d) | p.login] AS approvers,
-  [(d)-[:REPLACES]->(old:Decision) | old {.id, .title, .url}] AS replaces,
-  [(d)-[:MOVES_FROM]->(t:Technology) | t.name] AS moves_from,
-  [(d)-[:MOVES_TO]->(t:Technology) | t.name] AS moves_to
-```
+The real `decision_trace` is in [queries/decision_trace.cypher](queries/decision_trace.cypher). It returns the
+decision plus lists (discussion, implementing PRs, authors, reviewers, approvers, replaces, see-also), with no
+cartesian blow-up.
+
+> **FalkorDB v4.22.1 gotcha:** if several pattern comprehensions in one `RETURN` reuse a variable name (e.g. `p`
+> in two of them), only the first one returns rows. Give each comprehension its own variable names. A test in
+> `tests/test_keps.py` guards this.
 
 ### Scoring (who knows / who reviews)
 `score(person) = Σ over prior PRs q: w(role) · 2^(−age_days/90) · w(match)`, where:
